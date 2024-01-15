@@ -6,59 +6,116 @@ export default function App() {
   const [result, setResult] = useState("0"); 
   const [operation, setOpeation] = useState("");
   const [nums, setNums] = useState({num1: "", num2: ""})
-  const [fontSize, setFontSize] = useState(80);
-  const updateNums = (num) => {
-    if(operation.length === 0){
-      if(nums.num1.length > 8) return; 
-      setNums(prev => {
-        const newState = {...prev}; 
-        newState.num1 += num; 
-        setResult(newState.num1); 
-        return newState;
-      }); 
-    }else{
-      if(nums.num2.length > 8) return;
-      setNums(prev => {
-        const newState = {...prev}; 
-        newState.num2 += num; 
-        setResult(newState.num2);
-        return newState; 
-      })
-    }
-  }
+  const [activeBtn, setActiveBtn] = useState(null);
   const clear = () => {
     setNums({num1: "", num2: ""});
     setResult(0);
     setOpeation("");
   }
-  const pickOperation = (op) => {
-    let res = 0; 
-    if(operation.length !== 0){
-      if(operation === "+"){
-        res = JSON.parse(nums.num1) + JSON.parse(nums.num2);
-      }else if(operation === "-"){
-        res = JSON.parse(nums.num1) - JSON.parse(nums.num2);
-      }else if(operation === "x"){
-        res = JSON.parse(nums.num1) * JSON.parse(nums.num2);
-      }else if(operation === '\u00F7'){
-        if(JSON.parse(nums.num2) === 0){
-          setResult("Error");
-          setNums({num1: "", num2: ""});
-          return;
-        }
-        res = JSON.parse(nums.num1) / JSON.parse(nums.num2);
+  const display = (num) => {
+    setResult(num)
+  }
+  const calculate = (op) => {
+    let res = 0;
+    let msg = ""
+    let num1 = nums.num1.length > 0 ? JSON.parse(nums.num1) : 0; 
+    let num2 = nums.num2.length > 0 ? JSON.parse(nums.num2) : 0;
+    console.log(nums)
+    console.log("NUM1: " + num1, "NUM2 " + num2)
+      switch(op){
+        case "+":
+          res = num1 + num2; 
+          break; 
+        case "-":
+          res = num1 - num2; 
+          break; 
+        case "\u00F7":
+          if(num2 === 0){
+            msg = "Error"
+            return msg;
+          }
+          res = num1 / num2; 
+          break; 
+        case "\u00D7":
+          res = num1 * num2; 
+          break;
+        default: 
+          res = "";
       }
+      return JSON.stringify(res);
+  }
+  const pickOperation = (op) => {
+    let res; 
+    if(op === "=" && (nums.num1.length < 1 || nums.num2.length < 1)) return;
+    if(op === "="){
+      res = calculate(operation); 
       setNums(prev => {
-        const newState = {...prev} 
-        newState.num1 = JSON.stringify(res); 
-        newState.num2 = "";
-        return newState;
-      })
-      setResult(res);
-      setOpeation(""); 
-    }else{
-      setOpeation(op);
+        const obj = {...prev}; 
+        if(res === ""){
+          obj.num1 = "0";
+        }else{
+          obj.num1 = res;
+        }
+        return obj;
+      });
+      display(res);
+      return;
     }
+    if(operation.length === 0){ 
+      // update num1
+      if(op === "+/-"){
+        res = -1 * JSON.parse(result);
+        display(res); 
+        setNums(prev => {
+          const obj = {...prev}
+          obj.num1 = JSON.stringify(res); 
+          return obj; 
+        })
+        setOpeation("");
+        return;
+      }else if(op === "%"){
+        res = JSON.parse(result) / 100;
+        display(res); 
+        setNums(prev => {
+          const obj = {...prev}
+          obj.num1 = JSON.stringify(res); 
+          return obj;
+        })
+        setOpeation("");
+        return;
+      }
+      setOpeation(op);
+    }else{
+      // calculate result
+      res = calculate(operation);
+      display(res);
+      const obj = {num1: res, num2: ""};
+      setNums(obj);
+      setOpeation(op); 
+    }
+
+  }
+  const updateNums = (num) =>{
+    if(operation.length === 0){
+      // choose num1 as a result 
+      setNums(prev => {
+        const obj = {...prev}
+        obj.num1 += num;
+        display(obj.num1);
+        return obj;
+      })
+    }else if(operation.length !== 0 && operation !== "%" && operation !== "+/-"){
+      // modify num2
+      setNums(prev => {
+        const obj = {...prev}
+        obj.num2 += num; 
+        display(obj.num2); 
+        return obj;
+      })
+    }
+  }
+  const toggleColor = (btn) => {
+    setActiveBtn(btn)
   }
   return (
     <View style={styles.container}>
@@ -72,33 +129,83 @@ export default function App() {
 
       <View style={styles.buttonContainer}>
         <View style={styles.buttonRow}>
-          <MyButton textStyle={styles.blackText} val={"AC"} style={[styles.btn, styles.lightGrayBtn]} pressHandler={clear}/>
-          <MyButton textStyle={styles.blackText} val={"+/-"} style={[styles.btn, styles.lightGrayBtn]} pressHandler={pickOperation}/>
-          <MyButton textStyle={styles.blackText} val={"%"} style={[styles.btn, styles.lightGrayBtn]} pressHandler={pickOperation}/>
-          <MyButton val={'\u00F7'} style={[styles.btn, styles.orangeBtn]} pressHandler={pickOperation}/>
+          <MyButton 
+            textStyle={styles.blackText} 
+            val={"AC"} style={[styles.btn, styles.lightGrayBtn]} 
+            pressHandler={clear} 
+            toggleColor={()=>toggleColor("")}
+            isActive={false}
+          />
+          <MyButton 
+            textStyle={styles.blackText} 
+            val={"+/-"} 
+            style={[styles.btn, styles.lightGrayBtn]} 
+            pressHandler={pickOperation} 
+            toggleColor={()=>toggleColor("")}
+            isActive={false}
+          />
+          <MyButton 
+            textStyle={styles.blackText} 
+            val={"%"} 
+            style={[styles.btn, styles.lightGrayBtn]}
+            pressHandler={pickOperation} 
+            toggleColor={()=> toggleColor("")}
+            isActive={false}
+          />
+          <MyButton 
+            val={'\u00F7'} 
+            style={[styles.btn, styles.orangeBtn]} 
+            pressHandler={pickOperation}
+            isActive={activeBtn === '\u00F7'}
+            toggleColor={() => setActiveBtn('\u00F7')}
+          />
         </View>
         <View style={styles.buttonRow}>
-          <MyButton val={"7"} style={styles.btn} pressHandler={updateNums}/>
-          <MyButton val={"8"} style={styles.btn} pressHandler={updateNums}/>
-          <MyButton val={"9"} style={styles.btn} pressHandler={updateNums}/>
-          <MyButton val={"x"} style={[styles.btn, styles.orangeBtn]} pressHandler={pickOperation}/>
+          <MyButton val={"7"} style={styles.btn} pressHandler={updateNums} toggleColor={()=> toggleColor("")} isActive={false}/>
+          <MyButton val={"8"} style={styles.btn} pressHandler={updateNums} toggleColor={()=> toggleColor("")} isActive={false}/>
+          <MyButton val={"9"} style={styles.btn} pressHandler={updateNums} toggleColor={()=> toggleColor("")} isActive={false}/>
+          <MyButton 
+            val={"\u00D7"} 
+            style={[styles.btn, styles.orangeBtn]} 
+            pressHandler={pickOperation}
+            isActive={activeBtn === '\u00D7'}
+            toggleColor={() => setActiveBtn('\u00D7')}
+          />
         </View>
         <View style={styles.buttonRow}>
-          <MyButton val={"4"} style={styles.btn} pressHandler={updateNums}/>
-          <MyButton val={"5"} style={styles.btn} pressHandler={updateNums}/>
-          <MyButton val={"6"} style={styles.btn} pressHandler={updateNums}/>
-          <MyButton val={"-"} style={[styles.btn, styles.orangeBtn]} pressHandler={pickOperation}/>
+          <MyButton val={"4"} style={styles.btn} pressHandler={updateNums} toggleColor={()=> toggleColor("")} isActive={false}/>
+          <MyButton val={"5"} style={styles.btn} pressHandler={updateNums} toggleColor={()=> toggleColor("")} isActive={false}/>
+          <MyButton val={"6"} style={styles.btn} pressHandler={updateNums} toggleColor={()=> toggleColor("")} isActive={false}/>
+          <MyButton 
+            val={"-"} 
+            style={[styles.btn, styles.orangeBtn]} 
+            pressHandler={pickOperation}
+            isActive={activeBtn === '-'}
+            toggleColor={() => setActiveBtn('-')}
+          />
         </View>
         <View style={styles.buttonRow}>
-          <MyButton val={"1"} style={styles.btn} pressHandler={updateNums}/>
-          <MyButton val={"2"} style={styles.btn} pressHandler={updateNums}/>
-          <MyButton val={"3"} style={styles.btn} pressHandler={updateNums}/>
-          <MyButton val={"+"} style={[styles.btn, styles.orangeBtn]} pressHandler={pickOperation}/>
+          <MyButton val={"1"} style={styles.btn} pressHandler={updateNums} toggleColor={()=> toggleColor("")} isActive={false}/>
+          <MyButton val={"2"} style={styles.btn} pressHandler={updateNums} toggleColor={()=> toggleColor("")} isActive={false}/>
+          <MyButton val={"3"} style={styles.btn} pressHandler={updateNums} toggleColor={()=> toggleColor("")} isActive={false}/>
+          <MyButton 
+            val={"+"} 
+            style={[styles.btn,styles.operationNotChosen]} 
+            pressHandler={pickOperation}
+            toggleColor={() => toggleColor("+")}
+            isActive={activeBtn === "+"}
+          />
         </View>
         <View style={[styles.buttonRow]}>
-          <MyButton val={"0"} style={styles.zeroBtn} pressHandler={updateNums}/>
-          <MyButton val={"."} style={styles.btn} pressHandler={updateNums}/>
-          <MyButton val={"="} style={[styles.btn, styles.orangeBtn]} pressHandler={pickOperation}/>
+          <MyButton val={"0"} style={styles.zeroBtn} pressHandler={updateNums} toggleColor={()=> toggleColor("")} isActive={false}/>
+          <MyButton val={"."} style={styles.btn} pressHandler={updateNums} toggleColor={()=> toggleColor("")} isActive={false}/>
+          <MyButton 
+            val={"="} 
+            style={[styles.btn, styles.orangeBtn]} 
+            pressHandler={pickOperation}
+            toggleColor={()=> toggleColor("=")}
+            isActive={false}
+          />
         </View>
       </View>
     </View>
@@ -159,8 +266,19 @@ const styles = StyleSheet.create({
   blackText: {
     color: "black"
   },
+  orangeText: {
+    color: "#FF9500"
+  },
+  whiteText: {
+    color: "white"
+  },
   lightGrayBtn: {
     backgroundColor: "#D4D4D2"
+  },
+  operationChosen: {
+    backgroundColor: "white"
+  },
+  operationNotChosen: {
+    backgroundColor: "#FF9500"
   }
-
 });
