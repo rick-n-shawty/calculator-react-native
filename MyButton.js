@@ -1,7 +1,6 @@
 import React, {useState} from "react";
 import { TouchableOpacity, Text, StyleSheet } from "react-native";
 export default function MyButton({val, style, pressHandler, textStyle, isActive, toggleColor}){ 
-    console.log(isActive)
     return(
         <TouchableOpacity 
         style={[style, isActive ? styles.activeBtn : {}]} 
@@ -14,7 +13,6 @@ export default function MyButton({val, style, pressHandler, textStyle, isActive,
         >
    
             <Text style={[textStyle ? textStyle : {"color": "white"}, isActive && styles.activeText, styles.text]}>{val}</Text>
-            {/* <Text style={[isToggled ? {backgroundColor: "white"} : {}, styles.text]}>{val}</Text> */}
         </TouchableOpacity>
     )
 }

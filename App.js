@@ -1,116 +1,194 @@
 import { StyleSheet, Text, View } from 'react-native';
 import MyButton from './MyButton';
 import { useState } from 'react';
+import MyError from './MyError';
 
-export default function App() {
-  const [result, setResult] = useState("0"); 
-  const [operation, setOpeation] = useState("");
-  const [nums, setNums] = useState({num1: "", num2: ""})
-  const [activeBtn, setActiveBtn] = useState(null);
+export default function App() { 
+  const [result, setResult] = useState('0'); 
+  const [activeBtn, setActiveBtn] = useState(null); 
+  const [nums, setNums] = useState({num1: "", num2: ""});
+  const [error, setError] = useState("");
+  const [operator, setOperator] = useState('');
+  const [previous, setPrevious] = useState('')
+
+  const formatNumber = (num) => {
+    const numeric = parseFloat(num);
+    let formatted; 
+    if(numeric >= 1e9){
+      formatted = numeric.toExponential(); 
+      formatted = formatted.replace(/\+/g, '');  
+      let arr = formatted.split(''); 
+      console.log(formatted.split(''))
+      let newStr = "";
+      for(let i = 0; i < arr.length; i++){
+        if(i > 6 && i < arr.indexOf('e')) continue;  
+        if(i === 6){
+          newStr += Math.round(parseFloat(arr[i])).toString();
+          continue; 
+        } 
+        newStr += arr[i]; 
+      }
+      formatted = newStr;
+    }else{
+      formatted = numeric.toLocaleString();
+    }
+    return formatted;
+  }
+  const checkLimit = (num) => {
+    const numeric = parseFloat(num);
+    let formatted = numeric >= 1e9 ? numeric.toExponential() : numeric.toLocaleString();
+    formatted = formatted.replace(/,/g, ''); 
+    return formatted;
+  }
   const clear = () => {
     setNums({num1: "", num2: ""});
     setResult(0);
-    setOpeation("");
+    setOperator("");
+    setError("");
   }
-  const display = (num) => {
-    setResult(num)
-  }
-  const calculate = (op) => {
+
+  const calculate = (op, num1, num2) => {
     let res = 0;
-    let msg = ""
-    let num1 = nums.num1.length > 0 ? JSON.parse(nums.num1) : 0; 
-    let num2 = nums.num2.length > 0 ? JSON.parse(nums.num2) : 0;
-    console.log(nums)
-    console.log("NUM1: " + num1, "NUM2 " + num2)
-      switch(op){
-        case "+":
-          res = num1 + num2; 
-          break; 
-        case "-":
-          res = num1 - num2; 
-          break; 
-        case "\u00F7":
-          if(num2 === 0){
-            msg = "Error"
-            return msg;
-          }
-          res = num1 / num2; 
-          break; 
-        case "\u00D7":
-          res = num1 * num2; 
-          break;
-        default: 
-          res = "";
-      }
-      return JSON.stringify(res);
-  }
-  const pickOperation = (op) => {
-    let res; 
-    if(op === "=" && (nums.num1.length < 1 || nums.num2.length < 1)) return;
-    if(op === "="){
-      res = calculate(operation); 
-      setNums(prev => {
-        const obj = {...prev}; 
-        if(res === ""){
-          obj.num1 = "0";
-        }else{
-          obj.num1 = res;
+    if(num1.length === 0 && num2.length === 0) return;
+
+    num1 = parseFloat(num1); 
+    num2 = parseFloat(num2); 
+
+    switch(op){
+      case "+":
+        res = num1 + num2; 
+        break; 
+      case "-":
+        res = num1 - num2; 
+        break; 
+      case "\u00F7":
+        if(num2 === 0){
+          throw new MyError("Error");
         }
-        return obj;
-      });
-      display(res);
+        res = num1 / num2; 
+        break; 
+      case "\u00D7":
+        res = num1 * num2; 
+        break;
+      default: 
+        throw new MyError("Something went wrong");
+    }
+    try{
+      res = res.toString();
+      res = checkLimit(res);
+    }catch(err){
+      throw new MyError("Error");
+    }
+    // returns string 
+    return res; 
+  }
+ 
+  const handleOperatorClick = (op) => {
+    let res;
+    if(op === "=" && operator.length === 0) return; 
+
+    if(op === "=" && operator.length !== 0 && nums.num1.length !== 0 && nums.num2.length === 0){
+      res = calculate(operator, nums.num1, previous); 
+      setNums(prev => {
+        const temp = {...prev}
+        temp.num1 = res; 
+        temp.num2 = ""; 
+        return temp; 
+      })
+      setResult(formatNumber(res)); 
+      return; 
+    }else if(op === "=" && operator.length !== 0 && nums.num1.length !== 0 && nums.num2.length !== 0){
+      try{
+        res = calculate(operator, nums.num1, nums.num2); 
+        setResult(formatNumber(res)); 
+        setPrevious(nums.num2); 
+        setNums(prev => {
+          const temp = {...prev}
+          temp.num1 = res; 
+          temp.num2 = ""
+          return temp; 
+        })
+      }catch(err){
+        setError(err.message); 
+      }
       return;
     }
-    if(operation.length === 0){ 
-      // update num1
-      if(op === "+/-"){
-        res = -1 * JSON.parse(result);
-        display(res); 
-        setNums(prev => {
-          const obj = {...prev}
-          obj.num1 = JSON.stringify(res); 
-          return obj; 
-        })
-        setOpeation("");
-        return;
-      }else if(op === "%"){
-        res = JSON.parse(result) / 100;
-        display(res); 
-        setNums(prev => {
-          const obj = {...prev}
-          obj.num1 = JSON.stringify(res); 
-          return obj;
-        })
-        setOpeation("");
-        return;
+    let num = 0; 
+
+   if(operator.length === 0 && (op === "%" || op === "+/-")){
+      if(op === "%"){
+        num = parseFloat(nums.num1) / 100;
+      }else if(op === "+/-"){
+        num = -1 * parseFloat(nums.num1);
       }
-      setOpeation(op);
-    }else{
-      // calculate result
-      res = calculate(operation);
-      display(res);
-      const obj = {num1: res, num2: ""};
-      setNums(obj);
-      setOpeation(op); 
+      console.log("NUMBER ", num)
+      if(num === NaN){
+        num = 0;
+      }
+      setNums(prev => {
+        const temp = {...prev}; 
+        if(num !== 0) temp.num1 = num.toString(); 
+        else temp.num1 = ""; 
+        return temp;
+      }) 
+      setResult(formatNumber(num)); 
+    }else if(operator.length === 0 && (op === "%" || op === "+/-")){
+      if(op === "%"){
+        num = parseFloat(nums.num2) / 100;
+      }else if(op === "+/-"){
+        num = -1 * parseFloat(nums.num2);
+      }
+      if(num === NaN){
+        num = 0;
+      }
+      setNums(prev => {
+        const temp = {...prev}; 
+        if(num !== 0) temp.num2 = num.toString(); 
+        else temp.num2 = ""; 
+        return temp;
+      }) 
+      setResult(formatNumber(num)); 
     }
 
+    if(op !== "+/-" && op !== "%" && op !== "="){
+      setOperator(op); 
+    }
+
+    if(nums.num1.length !== 0 && nums.num2.length !== 0 && operator.length !== 0){
+      // user enters num1, operator, num2, operator
+      try{
+        res = calculate(operator,nums.num1, nums.num2);
+        setResult(formatNumber(res)); 
+        setPrevious(nums.num2);
+        setNums(prev => {
+          const temp = {...prev}; 
+          temp.num1 = res; 
+          temp.num2 = ""; 
+          return temp; 
+        })
+        setOperator(op);
+      }catch(err){
+        setError(err.message); 
+      }
+    }
   }
+  
   const updateNums = (num) =>{
-    if(operation.length === 0){
+    if(operator.length === 0){
       // choose num1 as a result 
       setNums(prev => {
         const obj = {...prev}
         obj.num1 += num;
-        display(obj.num1);
+        setResult(obj.num1);
         return obj;
       })
-    }else if(operation.length !== 0 && operation !== "%" && operation !== "+/-"){
+    }else if(operator.length !== 0){
       // modify num2
       setNums(prev => {
-        const obj = {...prev}
-        obj.num2 += num; 
-        display(obj.num2); 
-        return obj;
+        const temp = {...prev}; 
+        temp.num2 += num; 
+        setResult(temp.num2); 
+        return temp; 
       })
     }
   }
@@ -124,7 +202,7 @@ export default function App() {
         adjustsFontSizeToFit 
         minimumFontScale={0.8} 
         numberOfLines={1} 
-        style={[styles.displayText]}>{result}</Text>
+        style={[styles.displayText]}>{error.length > 0 ? error : result}</Text>
       </View>
 
       <View style={styles.buttonContainer}>
@@ -140,7 +218,7 @@ export default function App() {
             textStyle={styles.blackText} 
             val={"+/-"} 
             style={[styles.btn, styles.lightGrayBtn]} 
-            pressHandler={pickOperation} 
+            pressHandler={handleOperatorClick} 
             toggleColor={()=>toggleColor("")}
             isActive={false}
           />
@@ -148,14 +226,14 @@ export default function App() {
             textStyle={styles.blackText} 
             val={"%"} 
             style={[styles.btn, styles.lightGrayBtn]}
-            pressHandler={pickOperation} 
+            pressHandler={handleOperatorClick} 
             toggleColor={()=> toggleColor("")}
             isActive={false}
           />
           <MyButton 
             val={'\u00F7'} 
             style={[styles.btn, styles.orangeBtn]} 
-            pressHandler={pickOperation}
+            pressHandler={handleOperatorClick}
             isActive={activeBtn === '\u00F7'}
             toggleColor={() => setActiveBtn('\u00F7')}
           />
@@ -167,7 +245,7 @@ export default function App() {
           <MyButton 
             val={"\u00D7"} 
             style={[styles.btn, styles.orangeBtn]} 
-            pressHandler={pickOperation}
+            pressHandler={handleOperatorClick}
             isActive={activeBtn === '\u00D7'}
             toggleColor={() => setActiveBtn('\u00D7')}
           />
@@ -179,7 +257,7 @@ export default function App() {
           <MyButton 
             val={"-"} 
             style={[styles.btn, styles.orangeBtn]} 
-            pressHandler={pickOperation}
+            pressHandler={handleOperatorClick}
             isActive={activeBtn === '-'}
             toggleColor={() => setActiveBtn('-')}
           />
@@ -191,7 +269,7 @@ export default function App() {
           <MyButton 
             val={"+"} 
             style={[styles.btn,styles.operationNotChosen]} 
-            pressHandler={pickOperation}
+            pressHandler={handleOperatorClick}
             toggleColor={() => toggleColor("+")}
             isActive={activeBtn === "+"}
           />
@@ -202,7 +280,7 @@ export default function App() {
           <MyButton 
             val={"="} 
             style={[styles.btn, styles.orangeBtn]} 
-            pressHandler={pickOperation}
+            pressHandler={handleOperatorClick}
             toggleColor={()=> toggleColor("=")}
             isActive={false}
           />
@@ -256,7 +334,7 @@ const styles = StyleSheet.create({
     alignItems: "center"
   },
   displayText: {
-    fontSize: 80,
+    fontSize: 70,
     color: 'white',
     maxHeight: "70%"
   },
